@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+
+    <title>FCFS Scheduler</title>
+
+    <style>
+      body {
+        font-family: Arial;
+        background: #111;
+        color: white;
+
+        padding: 20px;
+      }
+
+      h1 {
+        margin-bottom: 20px;
+      }
+
+      .controls {
+        display: flex;
+        gap: 10px;
+
+        margin-bottom: 30px;
+      }
+
+      input,
+      button {
+        padding: 10px;
+        font-size: 16px;
+      }
+
+      #array {
+        display: flex;
+        gap: 10px;
+
+        flex-wrap: wrap;
+      }
+
+      .box {
+        width: 100px;
+        height: 100px;
+
+        background: #2b7fff;
+
+        border-radius: 12px;
+
+        display: flex;
+        flex-direction: column;
+
+        align-items: center;
+        justify-content: center;
+
+        font-size: 20px;
+        font-weight: bold;
+
+        transition: 0.3s;
+      }
+    </style>
+  </head>
+
+  <body>
+    <h1>FCFS — First Come First Served</h1>
+
+    <div class="controls">
+      <input type="number" id="numberInput" placeholder="Burst Time" min="1" />
+
+      <button id="addBtn">Agregar Proceso</button>
+    </div>
+
+    <div id="array"></div>
+
+    <script src="index.js"></script>
+  </body>
+</html>

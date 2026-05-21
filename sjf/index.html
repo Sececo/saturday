@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Simulador Array</title>
+
+    <style>
+      body {
+        font-family: Arial;
+        padding: 20px;
+        background: #111;
+        color: white;
+      }
+
+      .controls {
+        margin-bottom: 20px;
+      }
+
+      input {
+        padding: 8px;
+        width: 120px;
+      }
+
+      button {
+        padding: 8px 12px;
+        cursor: pointer;
+      }
+
+      #array {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+        flex-wrap: wrap;
+      }
+
+      .box {
+        width: 60px;
+        height: 60px;
+        background: #2b7fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 10px;
+        font-size: 20px;
+        font-weight: bold;
+
+        transition: all 0.4s ease;
+      }
+
+      #log {
+        margin-top: 20px;
+        font-size: 18px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <h1>Simulador de Array Dinámico</h1>
+
+    <div class="controls">
+      <input id="numberInput" type="number" placeholder="Número" />
+      <button id="addBtn">Push</button>
+    </div>
+
+    <div id="array"></div>
+
+    <div id="log"></div>
+
+    <script src="index.js"></script>
+  </body>
+</html>

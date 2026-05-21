@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Round Robin</title>
+
+    <style>
+      body {
+        font-family: Arial;
+        background: #111;
+        color: white;
+        padding: 20px;
+      }
+
+      .controls {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+
+      input,
+      button {
+        padding: 10px;
+        font-size: 16px;
+      }
+
+      #array {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .box {
+        width: 100px;
+        height: 100px;
+
+        background: #2b7fff;
+
+        border-radius: 12px;
+
+        display: flex;
+        flex-direction: column;
+
+        align-items: center;
+        justify-content: center;
+
+        font-weight: bold;
+      }
+    </style>
+  </head>
+
+  <body>
+    <h1>Round Robin</h1>
+
+    <div class="controls">
+      <input type="number" id="numberInput" placeholder="Burst" min="1" />
+
+      <button id="addBtn">Agregar</button>
+    </div>
+
+    <div id="array"></div>
+
+    <script src="index.js"></script>
+  </body>
+</html>
