@@ -172,6 +172,59 @@
         border: 1px solid #ddd;
         border-radius: 8px;
       }
+
+      .ranking-table-container {
+        margin-top: 25px;
+        overflow-x: auto;
+      }
+
+      .ranking-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        font-size: 14px;
+      }
+
+      .ranking-table th {
+        background: #1e293b;
+        color: white;
+        padding: 12px;
+        border: 1px solid #334155;
+      }
+
+      .ranking-table td {
+        padding: 10px;
+        border: 1px solid #cbd5e1;
+      }
+
+      .ranking-table tr:nth-child(even) {
+        background: #f8fafc;
+      }
+
+      .rank-1 {
+        background: #dcfce7 !important;
+        font-weight: bold;
+      }
+
+      .rank-last {
+        background: #fee2e2 !important;
+      }
+
+      .badge {
+        padding: 4px 8px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: bold;
+        color: white;
+      }
+
+      .badge-preemptive {
+        background: #ef4444;
+      }
+
+      .badge-non {
+        background: #22c55e;
+      }
     </style>
   </head>
 
@@ -346,6 +399,18 @@
     <script>
       let simulationInterval = null;
       let processCounter = 5;
+      const processColors = {
+        P1: '#ff6b6b',
+        P2: '#4dabf7',
+        P3: '#51cf66',
+        P4: '#f59f00',
+        P5: '#845ef7',
+        P6: '#ff922b',
+        P7: '#20c997',
+        P8: '#e64980',
+        P9: '#94d82d',
+        P10: '#228be6',
+      };
 
       const processTable = document.getElementById('processTable');
       const gantt = document.getElementById('gantt');
@@ -517,9 +582,9 @@
         let totalTurnaround = 0;
 
         processes.forEach((p) => {
-          p.waitingTime = Math.max(0, p.startTime - p.arrivalTime);
-
           p.turnaroundTime = p.completionTime - p.arrivalTime;
+
+          p.waitingTime = p.turnaroundTime - p.burstTime;
 
           totalWaiting += p.waitingTime;
           totalTurnaround += p.turnaroundTime;
@@ -722,11 +787,16 @@
             quantumCounter++;
 
             gantt.innerHTML += `
-              <div class="gantt-block">
-                ${currentProcess.id}<br>
-                t=${time}
-              </div>
-            `;
+<div 
+  class="gantt-block"
+  style="
+    background:${processColors[currentProcess.id] || '#666'};
+  "
+>
+  ${currentProcess.id}<br>
+  t=${time}
+</div>
+`;
 
             simulationLogs.push(
               `Tiempo ${time}: Ejecutando ${currentProcess.id}`,
@@ -809,7 +879,8 @@
         let readyQueue = [];
         let currentProcess = null;
         let quantumCounter = 0;
-
+        const timeline = [];
+        const logs = [];
         while (completed < processes.length) {
           processes.forEach((p) => {
             if (
@@ -819,6 +890,8 @@
               p !== currentProcess
             ) {
               readyQueue.push(p);
+
+              logs.push(`Tiempo ${time}: ${p.id} llegó`);
             }
           });
 
@@ -839,6 +912,10 @@
                   shortest &&
                   shortest.remainingTime < currentProcess.remainingTime
                 ) {
+                  logs.push(
+                    `Tiempo ${time}: ${shortest.id} interrumpe a ${currentProcess.id}`,
+                  );
+
                   readyQueue.push(currentProcess);
 
                   currentProcess = readyQueue.shift();
@@ -863,6 +940,10 @@
               mode === 'PREEMPTIVE' &&
               quantumCounter >= quantum
             ) {
+              logs.push(
+                `Tiempo ${time}: Quantum agotado para ${currentProcess.id}`,
+              );
+
               readyQueue.push(currentProcess);
 
               currentProcess = readyQueue.shift();
@@ -877,6 +958,10 @@
                 const highest = readyQueue[0];
 
                 if (highest && highest.priority < currentProcess.priority) {
+                  logs.push(
+                    `Tiempo ${time}: ${highest.id} interrumpe a ${currentProcess.id}`,
+                  );
+
                   readyQueue.push(currentProcess);
 
                   readyQueue.sort((a, b) => a.priority - b.priority);
@@ -900,6 +985,12 @@
 
             currentProcess.remainingTime--;
 
+            timeline.push({
+              process: currentProcess.id,
+              time: time,
+            });
+
+            logs.push(`Tiempo ${time}: Ejecutando ${currentProcess.id}`);
             if (algorithm === 'RR') {
               quantumCounter++;
             }
@@ -908,6 +999,7 @@
 
             if (currentProcess.remainingTime === 0) {
               currentProcess.completionTime = time;
+              logs.push(`Tiempo ${time}: ${currentProcess.id} finalizó`);
 
               completed++;
 
@@ -921,11 +1013,13 @@
         }
 
         processes.forEach((p) => {
-          p.waitingTime = Math.max(0, p.startTime - p.arrivalTime);
-
           p.turnaroundTime = p.completionTime - p.arrivalTime;
+
+          p.waitingTime = p.turnaroundTime - p.burstTime;
         });
 
+        processes.timeline = timeline;
+        processes.logs = logs;
         return processes;
       }
 
@@ -942,6 +1036,8 @@
               !readyQueue.includes(p)
             ) {
               readyQueue.push(p);
+
+              logs.push(`Tiempo ${time}: ${p.id} llegó`);
             }
           });
 
@@ -1005,9 +1101,9 @@
         }
 
         processes.forEach((p) => {
-          p.waitingTime = Math.max(0, p.startTime - p.arrivalTime);
-
           p.turnaroundTime = p.completionTime - p.arrivalTime;
+
+          p.waitingTime = p.turnaroundTime - p.burstTime;
         });
 
         return processes;
@@ -1024,20 +1120,27 @@
           avgWait += p.waitingTime;
           avgTurn += p.turnaroundTime;
 
-          for (let i = p.startTime; i < p.completionTime; i++) {
-            ganttHTML += `
-              <div class="gantt-block">
-                ${p.id}<br>
-                t=${i}
-              </div>
-            `;
-          }
-
-          logsHTML += `
-            Tiempo ${p.startTime}: ${p.id} inició<br>
-            Tiempo ${p.completionTime}: ${p.id} finalizó<br>
-          `;
+          //         logsHTML += `
+          //   Tiempo ${p.startTime}: ${p.id} inició<br>
+          //   Tiempo ${p.completionTime}: ${p.id} finalizó<br>
+          // `;
         });
+
+        if (processes.timeline) {
+          processes.timeline.forEach((step) => {
+            ganttHTML += `
+              <div 
+                class="gantt-block"
+                style="
+                  background:${processColors[step.process] || '#666'};
+                "
+              >
+                ${step.process}<br>
+                t=${step.time}
+              </div>
+              `;
+          });
+        }
 
         avgWait = (avgWait / processes.length).toFixed(2);
         avgTurn = (avgTurn / processes.length).toFixed(2);
@@ -1088,8 +1191,8 @@
             </div>
 
             <div class="log">
-              ${logsHTML}
-            </div>
+  ${processes.logs ? processes.logs.join('<br>') : ''}
+</div>
 
             <div class="note-box">
               ${note}
@@ -1191,92 +1294,166 @@
 
         if (!container) return;
 
-        let best = null;
-        let worst = null;
-
-        scenarios.forEach((s) => {
-          let wait = 0;
-          let turn = 0;
+        const ranking = scenarios.map((s) => {
+          let totalWait = 0;
+          let totalTurn = 0;
 
           s.data.forEach((p) => {
-            wait += p.waitingTime;
-            turn += p.turnaroundTime;
+            totalWait += p.waitingTime;
+            totalTurn += p.turnaroundTime;
           });
 
-          const avgWait = wait / s.data.length;
-          const avgTurn = turn / s.data.length;
+          const avgWait = totalWait / s.data.length;
+          const avgTurn = totalTurn / s.data.length;
 
-          if (!best || avgWait < best.wait) {
-            best = {
-              title: s.title,
-              wait: avgWait,
-              turn: avgTurn,
-            };
+          const efficiencyScore = ((1 / (avgWait + avgTurn)) * 100).toFixed(2);
+
+          let type = 'No Apropiativo';
+
+          if (s.title.includes('Apropiativo') || s.title.includes('RR')) {
+            type = 'Apropiativo';
           }
 
-          if (!worst || avgWait > worst.wait) {
-            worst = {
-              title: s.title,
-              wait: avgWait,
-            };
-          }
+          return {
+            title: s.title,
+            avgWait,
+            avgTurn,
+            efficiencyScore,
+            type,
+          };
         });
 
-        let text = `
-          <div style="background:#f0f8ff; padding:15px; border-left:5px solid #007bff; border-radius:5px;">
-            <h3>🏆 Veredicto Final</h3>
+        ranking.sort((a, b) => a.avgWait - b.avgWait);
 
-            <p>
-              El algoritmo óptimo para estos datos fue <strong>${best.title}</strong>,
-              con un tiempo de espera promedio de <strong>${best.wait.toFixed(2)}</strong>
-              y un Turnaround promedio de <strong>${best.turn.toFixed(2)}</strong>.
-            </p>
-        `;
+        const best = ranking[0];
+        const worst = ranking[ranking.length - 1];
 
-        if (best.title.includes('Híbrido')) {
-          text += `
-            <p><strong>Análisis Híbrido:</strong> La combinación fue exitosa porque logró equilibrar la equidad de la ejecución por bloques con la eficiencia del ordenamiento seleccionado.</p>
-          `;
-        } else if (best.title.includes('FCFS')) {
-          text += `
-            <p><strong>Análisis FCFS:</strong> Ganó porque los procesos ya llegaban en un orden favorable o tenían tiempos similares.</p>
-          `;
-        } else if (best.title.includes('SJF')) {
-          text += `
-            <p><strong>Análisis SJF:</strong> Fue el óptimo porque priorizó los procesos cortos.</p>
-          `;
-        } else if (best.title.includes('Priority')) {
-          text += `
-            <p><strong>Análisis Priority:</strong> Funcionó mejor porque los procesos críticos tenían ráfagas cortas.</p>
-          `;
-        } else if (best.title.includes('RR')) {
-          text += `
-            <p><strong>Análisis RR:</strong> Fue equilibrado, evitando bloqueos largos.</p>
-          `;
-        }
+        let html = `
+    <div style="
+      background:white;
+      padding:20px;
+      border-radius:10px;
+      border:1px solid #ddd;
+    ">
 
-        text += `
-            <hr style="margin:10px 0;">
+      <h2 style="margin-bottom:20px;">
+        📊 Ranking Global de Algoritmos
+      </h2>
 
-            <p><strong>¿Por qué fallaron los otros?</strong></p>
+      <div class="ranking-table-container">
 
-            <ul>
-              <li>
-                <strong>${worst.title}</strong>
-                tuvo el peor rendimiento (${worst.wait.toFixed(2)} de espera).
-              </li>
-            </ul>
+        <table class="ranking-table">
 
-            <p>
-              <em>
-                Recomendación:
-                Use <strong>${best.title}</strong>.
-              </em>
-            </p>
-          </div>
-        `;
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Algoritmo</th>
+              <th>Modo</th>
+              <th>Espera Promedio</th>
+              <th>Turnaround</th>
+              <th>Score</th>
+              <th>Resultado</th>
+            </tr>
+          </thead>
 
-        container.innerHTML = text;
+          <tbody>
+  `;
+
+        ranking.forEach((r, index) => {
+          const rowClass =
+            index === 0
+              ? 'rank-1'
+              : index === ranking.length - 1
+                ? 'rank-last'
+                : '';
+
+          html += `
+      <tr class="${rowClass}">
+        <td>
+          ${index + 1}
+        </td>
+
+        <td>
+          ${r.title}
+        </td>
+
+        <td>
+          <span class="
+            badge
+            ${r.type === 'Apropiativo' ? 'badge-preemptive' : 'badge-non'}
+          ">
+            ${r.type}
+          </span>
+        </td>
+
+        <td>
+          ${r.avgWait.toFixed(2)}
+        </td>
+
+        <td>
+          ${r.avgTurn.toFixed(2)}
+        </td>
+
+        <td>
+          ${r.efficiencyScore}
+        </td>
+
+        <td>
+          ${
+            index === 0
+              ? '🏆 Mejor'
+              : index === ranking.length - 1
+                ? '❌ Peor'
+                : '—'
+          }
+        </td>
+      </tr>
+    `;
+        });
+
+        html += `
+          </tbody>
+        </table>
+      </div>
+
+      <div style="
+        margin-top:25px;
+        padding:15px;
+        background:#f8fafc;
+        border-radius:8px;
+        border-left:5px solid #2563eb;
+      ">
+
+        <h3>
+          🧠 Análisis Final
+        </h3>
+
+        <p>
+          El algoritmo con mejor rendimiento fue
+          <strong>${best.title}</strong>,
+          obteniendo el menor tiempo de espera promedio
+          (<strong>${best.avgWait.toFixed(2)}</strong>).
+        </p>
+
+        <p>
+          El algoritmo con peor rendimiento fue
+          <strong>${worst.title}</strong>,
+          alcanzando un tiempo de espera promedio de
+          <strong>${worst.avgWait.toFixed(2)}</strong>.
+        </p>
+
+        <p>
+          El ranking se organizó automáticamente
+          desde el algoritmo más eficiente
+          hasta el menos eficiente.
+        </p>
+
+      </div>
+
+    </div>
+  `;
+
+        container.innerHTML = html;
       }
 
       document.addEventListener('input', (e) => {
