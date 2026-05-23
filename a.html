@@ -1,0 +1,1297 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Simulador CPU Scheduler</title>
+
+    <style>
+      * {
+        box-sizing: border-box;
+        font-family: Arial, sans-serif;
+      }
+
+      body {
+        background: #f5f5f5;
+        padding: 20px;
+        color: #222;
+      }
+
+      h1 {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+
+      .container {
+        max-width: 1300px;
+        margin: auto;
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      }
+
+      .controls {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 15px;
+        margin-bottom: 20px;
+      }
+
+      label {
+        font-weight: bold;
+        margin-bottom: 5px;
+        display: block;
+      }
+
+      select,
+      input,
+      button {
+        width: 100%;
+        padding: 10px;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+      }
+
+      button {
+        background: #007bff;
+        color: white;
+        border: none;
+        cursor: pointer;
+        font-weight: bold;
+      }
+
+      button:hover {
+        background: #0056b3;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+      }
+
+      th,
+      td {
+        border: 1px solid #ddd;
+        padding: 10px;
+        text-align: center;
+      }
+
+      th {
+        background: #007bff;
+        color: white;
+      }
+
+      .gantt {
+        display: flex;
+        margin-top: 20px;
+        flex-wrap: wrap;
+        gap: 2px;
+      }
+
+      .gantt-block {
+        min-width: 50px;
+        padding: 10px;
+        text-align: center;
+        background: #28a745;
+        color: white;
+        border-radius: 4px;
+        font-size: 14px;
+      }
+
+      .metrics {
+        margin-top: 20px;
+        font-size: 18px;
+      }
+
+      .log {
+        margin-top: 20px;
+        background: #111;
+        color: #0f0;
+        padding: 15px;
+        height: 220px;
+        overflow-y: auto;
+        border-radius: 6px;
+        font-family: monospace;
+      }
+
+      .explanations {
+        margin-top: 30px;
+        padding: 15px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        background: #fafafa;
+      }
+
+      .table-input {
+        width: 80px;
+        padding: 5px;
+        text-align: center;
+      }
+
+      .delete-btn {
+        background: crimson;
+        color: white;
+        border: none;
+        padding: 5px 10px;
+        cursor: pointer;
+        border-radius: 4px;
+      }
+
+      .add-btn {
+        margin-top: 10px;
+      }
+
+      .hybrid-box {
+        margin-top: 15px;
+        padding: 15px;
+        background: #f9f9f9;
+        border-left: 3px solid #007bff;
+        border-radius: 6px;
+      }
+
+      .scenario-block {
+        margin-top: 35px;
+        border-top: 1px solid #ddd;
+        padding-top: 20px;
+      }
+
+      .note-box {
+        margin-top: 10px;
+        padding: 10px;
+        border: 1px solid #ddd;
+        background: #fafafa;
+        border-radius: 6px;
+      }
+
+      .verdict {
+        margin-top: 30px;
+        padding: 20px;
+        background: #fafafa;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <h1>Simulador de Planificación CPU</h1>
+
+      <div class="controls">
+        <div>
+          <label>Algoritmo</label>
+          <select id="algorithm">
+            <option value="FCFS">FCFS</option>
+            <option value="SJF">SJF</option>
+            <option value="RR">Round Robin</option>
+            <option value="PRIORITY">Priority Scheduling</option>
+          </select>
+        </div>
+
+        <div>
+          <label>Modo Priority / SJF</label>
+          <select id="mode">
+            <option value="NON_PREEMPTIVE">Non-Preemptive</option>
+            <option value="PREEMPTIVE">Preemptive</option>
+          </select>
+        </div>
+
+        <div>
+          <label>Quantum (RR)</label>
+          <input type="number" id="quantum" value="2" min="1" />
+        </div>
+
+        <div>
+          <label> Velocidad de Animación (ms) </label>
+
+          <input
+            type="range"
+            id="speed"
+            min="50"
+            max="1000"
+            step="50"
+            value="700"
+          />
+
+          <span id="speedValue"> 700 ms </span>
+        </div>
+
+        <div style="display: flex; align-items: end">
+          <button id="startBtn">Ejecutar Simulación</button>
+        </div>
+      </div>
+
+      <div class="hybrid-box">
+        <label style="display: flex; gap: 10px; align-items: center">
+          <input type="checkbox" id="enableHybrid" style="width: auto" />
+          Activar Mezcla de Algoritmos (Híbrido)
+        </label>
+
+        <div
+          id="hybridSettings"
+          style="
+            display: none;
+            margin-top: 10px;
+            padding: 10px;
+            background: #f9f9f9;
+            border-left: 3px solid #007bff;
+          "
+        >
+          <p>
+            Al activar esto, el sistema ejecutará una lógica combinada: Ordenará
+            los procesos según el "Algoritmo Base" y ejecutará cada bloque
+            usando el "Método de Ejecución".
+          </p>
+
+          <div class="controls">
+            <div>
+              <label> Algoritmo Base (Ordenamiento) </label>
+
+              <select id="hybridBase">
+                <option value="FCFS">FCFS</option>
+                <option value="SJF">SJF</option>
+                <option value="PRIORITY">Priority</option>
+              </select>
+            </div>
+
+            <div>
+              <label> Método de Ejecución </label>
+
+              <select id="hybridExec">
+                <option value="RR">Round Robin</option>
+                <option value="FCFS">FCFS</option>
+                <option value="SJF">SJF</option>
+              </select>
+            </div>
+
+            <div id="hybridQuantumContainer">
+              <label> Quantum Híbrido </label>
+
+              <input type="number" id="hybridQuantum" value="2" min="1" />
+            </div>
+          </div>
+
+          <div style="margin-top: 15px">
+            <button id="runHybridBtn">Ejecutar Híbrido</button>
+          </div>
+        </div>
+      </div>
+
+      <h3>Procesos</h3>
+
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Arrival</th>
+            <th>Burst</th>
+            <th>Priority</th>
+            <th>Acción</th>
+          </tr>
+        </thead>
+
+        <tbody id="processTable"></tbody>
+      </table>
+
+      <button class="add-btn" id="addProcessBtn">+ Agregar Proceso</button>
+
+      <h3>Gantt Chart</h3>
+
+      <div class="gantt" id="gantt"></div>
+
+      <div class="metrics" id="metrics"></div>
+
+      <h3>Resultado Final</h3>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Proceso</th>
+            <th>Llegada</th>
+            <th>Inicio</th>
+            <th>Fin</th>
+            <th>Espera</th>
+            <th>Turnaround</th>
+          </tr>
+        </thead>
+
+        <tbody id="results"></tbody>
+      </table>
+
+      <h3>Log de Simulación</h3>
+
+      <div class="log" id="log"></div>
+
+      <div class="explanations">
+        <h3>Explicaciones</h3>
+
+        <div id="explanationContent"></div>
+      </div>
+
+      <div class="explanations">
+        <h3>Comparativa Automática de Todos los Algoritmos</h3>
+
+        <div id="masterComparisonContent"></div>
+      </div>
+
+      <div class="verdict">
+        <h3>Veredicto Final</h3>
+
+        <div id="finalVerdict"></div>
+      </div>
+    </div>
+
+    <script>
+      let simulationInterval = null;
+      let processCounter = 5;
+
+      const processTable = document.getElementById('processTable');
+      const gantt = document.getElementById('gantt');
+      const results = document.getElementById('results');
+      const metrics = document.getElementById('metrics');
+      const log = document.getElementById('log');
+      const algorithmSelect = document.getElementById('algorithm');
+      const explanationContent = document.getElementById('explanationContent');
+      const speedInput = document.getElementById('speed');
+      const speedValue = document.getElementById('speedValue');
+      const enableHybrid = document.getElementById('enableHybrid');
+      const hybridSettings = document.getElementById('hybridSettings');
+      const hybridBase = document.getElementById('hybridBase');
+      const hybridExec = document.getElementById('hybridExec');
+      const hybridQuantumContainer = document.getElementById(
+        'hybridQuantumContainer',
+      );
+      const hybridQuantum = document.getElementById('hybridQuantum');
+
+      const defaultProcesses = [
+        { id: 'P1', arrivalTime: 0, burstTime: 1, priority: 1 },
+        { id: 'P2', arrivalTime: 0, burstTime: 1, priority: 2 },
+        { id: 'P3', arrivalTime: 0, burstTime: 1, priority: 2 },
+        { id: 'P4', arrivalTime: 0, burstTime: 20, priority: 1 },
+      ];
+
+      enableHybrid.addEventListener('change', () => {
+        hybridSettings.style.display = enableHybrid.checked ? 'block' : 'none';
+        runMasterComparison();
+      });
+
+      hybridExec.addEventListener('change', () => {
+        hybridQuantumContainer.style.display =
+          hybridExec.value === 'RR' ? 'block' : 'none';
+
+        runMasterComparison();
+      });
+
+      hybridBase?.addEventListener('change', runMasterComparison);
+      hybridQuantum?.addEventListener('input', runMasterComparison);
+
+      function renderProcesses(processes = defaultProcesses) {
+        processTable.innerHTML = '';
+
+        processes.forEach((p) => {
+          processTable.innerHTML += `
+            <tr>
+              <td>${p.id}</td>
+              <td><input type="number" class="table-input arrival" value="${p.arrivalTime}"></td>
+              <td><input type="number" class="table-input burst" value="${p.burstTime}"></td>
+              <td><input type="number" class="table-input priority" value="${p.priority}"></td>
+              <td><button class="delete-btn">🗑️</button></td>
+            </tr>
+          `;
+        });
+
+        attachDeleteEvents();
+      }
+
+      renderProcesses();
+
+      function attachDeleteEvents() {
+        document.querySelectorAll('.delete-btn').forEach((btn) => {
+          btn.onclick = function () {
+            this.closest('tr').remove();
+            runMasterComparison();
+          };
+        });
+      }
+
+      document.getElementById('addProcessBtn').addEventListener('click', () => {
+        processTable.innerHTML += `
+          <tr>
+            <td>P${processCounter++}</td>
+            <td><input type="number" class="table-input arrival" value="0"></td>
+            <td><input type="number" class="table-input burst" value="1"></td>
+            <td><input type="number" class="table-input priority" value="1"></td>
+            <td><button class="delete-btn">🗑️</button></td>
+          </tr>
+        `;
+
+        attachDeleteEvents();
+        runMasterComparison();
+      });
+
+      function getProcessesFromTable() {
+        const rows = document.querySelectorAll('#processTable tr');
+        const processes = [];
+
+        rows.forEach((row) => {
+          const id = row.querySelector('td').innerText;
+
+          const arrivalTime =
+            parseInt(row.querySelector('.arrival').value) || 0;
+
+          const burstTime = parseInt(row.querySelector('.burst').value) || 1;
+
+          const priority = parseInt(row.querySelector('.priority').value) || 1;
+
+          processes.push({
+            id,
+            arrivalTime,
+            burstTime,
+            priority,
+            remainingTime: burstTime,
+            completionTime: 0,
+            turnaroundTime: 0,
+            waitingTime: 0,
+            startTime: null,
+          });
+        });
+
+        return processes;
+      }
+
+      function cloneProcesses() {
+        return JSON.parse(JSON.stringify(getProcessesFromTable()));
+      }
+
+      function sortQueue(queue, algo) {
+        if (algo === 'FCFS') {
+          queue.sort((a, b) => a.arrivalTime - b.arrivalTime);
+        } else if (algo === 'SJF') {
+          queue.sort((a, b) => a.remainingTime - b.remainingTime);
+        } else if (algo === 'PRIORITY') {
+          queue.sort((a, b) => a.priority - b.priority);
+        }
+      }
+
+      function addLog(message, targetLog = log) {
+        targetLog.innerHTML += message + '<br>';
+        targetLog.scrollTop = targetLog.scrollHeight;
+      }
+
+      function updateExplanation() {
+        const algorithm = algorithmSelect.value;
+
+        let text = '';
+
+        if (algorithm === 'FCFS') {
+          text =
+            'FCFS es NO PREEMPTIVO. Ejecuta completamente el primer proceso que llega.';
+        } else if (algorithm === 'SJF') {
+          text =
+            'SJF selecciona el proceso más corto. Puede ser PREEMPTIVO o NO PREEMPTIVO.';
+        } else if (algorithm === 'RR') {
+          text =
+            'Round Robin es PREEMPTIVO. Usa Quantum para repartir CPU entre procesos.';
+        } else {
+          text =
+            'Priority Scheduling ejecuta primero procesos con mayor prioridad.';
+        }
+
+        explanationContent.innerHTML = text;
+      }
+
+      updateExplanation();
+
+      algorithmSelect.addEventListener('change', updateExplanation);
+
+      speedInput.addEventListener('input', () => {
+        speedValue.innerText = speedInput.value + ' ms';
+      });
+
+      function calculateMetrics(processes) {
+        results.innerHTML = '';
+
+        let totalWaiting = 0;
+        let totalTurnaround = 0;
+
+        processes.forEach((p) => {
+          p.waitingTime = Math.max(0, p.startTime - p.arrivalTime);
+
+          p.turnaroundTime = p.completionTime - p.arrivalTime;
+
+          totalWaiting += p.waitingTime;
+          totalTurnaround += p.turnaroundTime;
+
+          results.innerHTML += `
+            <tr>
+              <td>${p.id}</td>
+              <td>${p.arrivalTime}</td>
+              <td>${p.startTime !== null ? p.startTime : '-'}</td>
+              <td>${p.completionTime}</td>
+              <td>${p.waitingTime}</td>
+              <td>${p.turnaroundTime}</td>
+            </tr>
+          `;
+        });
+
+        metrics.innerHTML = `
+          <strong>Average Waiting Time:</strong> ${(totalWaiting / processes.length).toFixed(2)}<br><br>
+          <strong>Average Turnaround Time:</strong> ${(totalTurnaround / processes.length).toFixed(2)}
+        `;
+      }
+
+      function runVisualSimulation(config) {
+        clearInterval(simulationInterval);
+
+        gantt.innerHTML = '';
+        results.innerHTML = '';
+        metrics.innerHTML = '';
+        log.innerHTML = '';
+
+        const processes = cloneProcesses();
+
+        let time = 0;
+        let completed = 0;
+        let readyQueue = [];
+        let currentProcess = null;
+        let quantumCounter = 0;
+
+        const ganttBlocks = [];
+        const simulationLogs = [];
+
+        function sortReadyQueue() {
+          if (config.algorithm === 'FCFS') {
+            readyQueue.sort((a, b) => a.arrivalTime - b.arrivalTime);
+          } else if (config.algorithm === 'SJF') {
+            readyQueue.sort((a, b) => a.remainingTime - b.remainingTime);
+          } else if (config.algorithm === 'PRIORITY') {
+            readyQueue.sort((a, b) => a.priority - b.priority);
+          }
+        }
+
+        function simulationStep() {
+          processes.forEach((p) => {
+            if (
+              p.arrivalTime === time &&
+              p.remainingTime > 0 &&
+              !readyQueue.includes(p) &&
+              p !== currentProcess
+            ) {
+              readyQueue.push(p);
+
+              addLog(`Tiempo ${time}: ${p.id} llegó`);
+
+              simulationLogs.push(`Tiempo ${time}: ${p.id} llegó`);
+            }
+          });
+
+          if (config.hybrid) {
+            sortQueue(readyQueue, config.baseAlgo);
+
+            if (!currentProcess) {
+              currentProcess = readyQueue.shift();
+              quantumCounter = 0;
+            }
+
+            if (
+              config.execAlgo === 'RR' &&
+              currentProcess &&
+              quantumCounter >= config.quantum
+            ) {
+              addLog(
+                `Tiempo ${time}: Quantum agotado para ${currentProcess.id}`,
+              );
+
+              simulationLogs.push(
+                `Tiempo ${time}: Quantum agotado para ${currentProcess.id}`,
+              );
+
+              readyQueue.push(currentProcess);
+
+              sortQueue(readyQueue, config.baseAlgo);
+
+              currentProcess = readyQueue.shift();
+
+              quantumCounter = 0;
+            }
+          } else {
+            if (config.algorithm === 'FCFS') {
+              if (!currentProcess) {
+                readyQueue.sort((a, b) => a.arrivalTime - b.arrivalTime);
+
+                currentProcess = readyQueue.shift();
+              }
+            } else if (config.algorithm === 'SJF') {
+              if (config.mode === 'NON_PREEMPTIVE') {
+                if (!currentProcess) {
+                  readyQueue.sort((a, b) => a.remainingTime - b.remainingTime);
+
+                  currentProcess = readyQueue.shift();
+                }
+              } else {
+                readyQueue.sort((a, b) => a.remainingTime - b.remainingTime);
+
+                const shortest = readyQueue[0];
+
+                if (
+                  shortest &&
+                  currentProcess &&
+                  shortest.remainingTime < currentProcess.remainingTime
+                ) {
+                  addLog(
+                    `Tiempo ${time}: ${shortest.id} interrumpe a ${currentProcess.id}`,
+                  );
+
+                  simulationLogs.push(
+                    `Tiempo ${time}: ${shortest.id} interrumpe a ${currentProcess.id}`,
+                  );
+
+                  readyQueue.push(currentProcess);
+
+                  currentProcess = readyQueue.shift();
+                } else if (!currentProcess) {
+                  currentProcess = readyQueue.shift();
+                }
+              }
+            } else if (config.algorithm === 'RR') {
+              if (!currentProcess) {
+                currentProcess = readyQueue.shift();
+
+                quantumCounter = 0;
+              }
+
+              if (currentProcess && quantumCounter >= config.quantum) {
+                addLog(
+                  `Tiempo ${time}: Quantum agotado para ${currentProcess.id}`,
+                );
+
+                simulationLogs.push(
+                  `Tiempo ${time}: Quantum agotado para ${currentProcess.id}`,
+                );
+
+                readyQueue.push(currentProcess);
+
+                currentProcess = readyQueue.shift();
+
+                quantumCounter = 0;
+              }
+            } else if (config.algorithm === 'PRIORITY') {
+              readyQueue.sort((a, b) => a.priority - b.priority);
+
+              if (config.mode === 'NON_PREEMPTIVE') {
+                if (!currentProcess) {
+                  currentProcess = readyQueue.shift();
+                }
+              } else {
+                const highest = readyQueue[0];
+
+                if (
+                  highest &&
+                  currentProcess &&
+                  highest.priority < currentProcess.priority
+                ) {
+                  addLog(
+                    `Tiempo ${time}: ${highest.id} interrumpe a ${currentProcess.id}`,
+                  );
+
+                  simulationLogs.push(
+                    `Tiempo ${time}: ${highest.id} interrumpe a ${currentProcess.id}`,
+                  );
+
+                  readyQueue.push(currentProcess);
+
+                  readyQueue.sort((a, b) => a.priority - b.priority);
+
+                  currentProcess = readyQueue.shift();
+                } else if (!currentProcess) {
+                  currentProcess = readyQueue.shift();
+                }
+              }
+            }
+          }
+
+          if (currentProcess) {
+            if (currentProcess.startTime === null) {
+              currentProcess.startTime = time;
+            }
+
+            currentProcess.remainingTime--;
+
+            quantumCounter++;
+
+            gantt.innerHTML += `
+              <div class="gantt-block">
+                ${currentProcess.id}<br>
+                t=${time}
+              </div>
+            `;
+
+            simulationLogs.push(
+              `Tiempo ${time}: Ejecutando ${currentProcess.id}`,
+            );
+
+            addLog(`Tiempo ${time}: Ejecutando ${currentProcess.id}`);
+
+            if (currentProcess.remainingTime === 0) {
+              currentProcess.completionTime = time + 1;
+
+              simulationLogs.push(
+                `Tiempo ${time + 1}: ${currentProcess.id} finalizó`,
+              );
+
+              addLog(`Tiempo ${time + 1}: ${currentProcess.id} finalizó`);
+
+              completed++;
+
+              currentProcess = null;
+
+              quantumCounter = 0;
+            }
+          } else {
+            gantt.innerHTML += `
+              <div class="gantt-block" style="background:#999;">
+                IDLE<br>
+                t=${time}
+              </div>
+            `;
+
+            addLog(`Tiempo ${time}: CPU IDLE`);
+
+            simulationLogs.push(`Tiempo ${time}: CPU IDLE`);
+          }
+
+          time++;
+
+          if (completed === processes.length) {
+            clearInterval(simulationInterval);
+
+            calculateMetrics(processes);
+
+            addLog('<br>===== SIMULACIÓN FINALIZADA =====');
+          }
+        }
+
+        simulationInterval = setInterval(
+          simulationStep,
+          parseInt(speedInput.value),
+        );
+      }
+
+      document
+        .getElementById('startBtn')
+        .addEventListener('click', startSimulation);
+
+      document.getElementById('runHybridBtn').addEventListener('click', () => {
+        runVisualSimulation({
+          hybrid: true,
+          baseAlgo: hybridBase.value,
+          execAlgo: hybridExec.value,
+          quantum: parseInt(hybridQuantum.value),
+        });
+      });
+
+      function startSimulation() {
+        runVisualSimulation({
+          hybrid: false,
+          algorithm: document.getElementById('algorithm').value,
+          mode: document.getElementById('mode').value,
+          quantum: parseInt(document.getElementById('quantum').value),
+        });
+      }
+
+      function simulateInMemory(algorithm, mode, quantum) {
+        const processes = cloneProcesses();
+
+        let time = 0;
+        let completed = 0;
+        let readyQueue = [];
+        let currentProcess = null;
+        let quantumCounter = 0;
+
+        while (completed < processes.length) {
+          processes.forEach((p) => {
+            if (
+              p.arrivalTime <= time &&
+              p.remainingTime > 0 &&
+              !readyQueue.includes(p) &&
+              p !== currentProcess
+            ) {
+              readyQueue.push(p);
+            }
+          });
+
+          if (algorithm === 'FCFS') {
+            if (!currentProcess) {
+              readyQueue.sort((a, b) => a.arrivalTime - b.arrivalTime);
+
+              currentProcess = readyQueue.shift();
+            }
+          } else if (algorithm === 'SJF') {
+            readyQueue.sort((a, b) => a.remainingTime - b.remainingTime);
+
+            if (mode === 'PREEMPTIVE') {
+              if (currentProcess) {
+                const shortest = readyQueue[0];
+
+                if (
+                  shortest &&
+                  shortest.remainingTime < currentProcess.remainingTime
+                ) {
+                  readyQueue.push(currentProcess);
+
+                  currentProcess = readyQueue.shift();
+                }
+              } else {
+                currentProcess = readyQueue.shift();
+              }
+            } else {
+              if (!currentProcess) {
+                currentProcess = readyQueue.shift();
+              }
+            }
+          } else if (algorithm === 'RR') {
+            if (!currentProcess) {
+              currentProcess = readyQueue.shift();
+
+              quantumCounter = 0;
+            }
+
+            if (
+              currentProcess &&
+              mode === 'PREEMPTIVE' &&
+              quantumCounter >= quantum
+            ) {
+              readyQueue.push(currentProcess);
+
+              currentProcess = readyQueue.shift();
+
+              quantumCounter = 0;
+            }
+          } else if (algorithm === 'PRIORITY') {
+            readyQueue.sort((a, b) => a.priority - b.priority);
+
+            if (mode === 'PREEMPTIVE') {
+              if (currentProcess) {
+                const highest = readyQueue[0];
+
+                if (highest && highest.priority < currentProcess.priority) {
+                  readyQueue.push(currentProcess);
+
+                  readyQueue.sort((a, b) => a.priority - b.priority);
+
+                  currentProcess = readyQueue.shift();
+                }
+              } else {
+                currentProcess = readyQueue.shift();
+              }
+            } else {
+              if (!currentProcess) {
+                currentProcess = readyQueue.shift();
+              }
+            }
+          }
+
+          if (currentProcess) {
+            if (currentProcess.startTime === null) {
+              currentProcess.startTime = time;
+            }
+
+            currentProcess.remainingTime--;
+
+            if (algorithm === 'RR') {
+              quantumCounter++;
+            }
+
+            time++;
+
+            if (currentProcess.remainingTime === 0) {
+              currentProcess.completionTime = time;
+
+              completed++;
+
+              currentProcess = null;
+
+              quantumCounter = 0;
+            }
+          } else {
+            time++;
+          }
+        }
+
+        processes.forEach((p) => {
+          p.waitingTime = Math.max(0, p.startTime - p.arrivalTime);
+
+          p.turnaroundTime = p.completionTime - p.arrivalTime;
+        });
+
+        return processes;
+      }
+
+      function runHybridSimulation(processes, baseAlgo, execAlgo, quantum) {
+        let time = 0;
+        let completed = 0;
+        let readyQueue = [];
+
+        while (completed < processes.length) {
+          processes.forEach((p) => {
+            if (
+              p.arrivalTime <= time &&
+              p.remainingTime > 0 &&
+              !readyQueue.includes(p)
+            ) {
+              readyQueue.push(p);
+            }
+          });
+
+          sortQueue(readyQueue, baseAlgo);
+
+          const current = readyQueue.shift();
+
+          if (!current) {
+            time++;
+            continue;
+          }
+
+          if (current.startTime === null) {
+            current.startTime = time;
+          }
+
+          if (execAlgo === 'RR') {
+            let slice = Math.min(quantum, current.remainingTime);
+
+            for (let i = 0; i < slice; i++) {
+              current.remainingTime--;
+
+              time++;
+
+              processes.forEach((p) => {
+                if (
+                  p.arrivalTime <= time &&
+                  p.remainingTime > 0 &&
+                  !readyQueue.includes(p) &&
+                  p !== current
+                ) {
+                  readyQueue.push(p);
+                }
+              });
+
+              if (current.remainingTime === 0) {
+                break;
+              }
+            }
+
+            if (current.remainingTime > 0) {
+              readyQueue.push(current);
+
+              sortQueue(readyQueue, baseAlgo);
+            } else {
+              current.completionTime = time;
+
+              completed++;
+            }
+          } else {
+            while (current.remainingTime > 0) {
+              current.remainingTime--;
+
+              time++;
+            }
+
+            current.completionTime = time;
+
+            completed++;
+          }
+        }
+
+        processes.forEach((p) => {
+          p.waitingTime = Math.max(0, p.startTime - p.arrivalTime);
+
+          p.turnaroundTime = p.completionTime - p.arrivalTime;
+        });
+
+        return processes;
+      }
+
+      function createScenarioHTML(title, processes, note) {
+        let avgWait = 0;
+        let avgTurn = 0;
+
+        let ganttHTML = '';
+        let logsHTML = '';
+
+        processes.forEach((p) => {
+          avgWait += p.waitingTime;
+          avgTurn += p.turnaroundTime;
+
+          for (let i = p.startTime; i < p.completionTime; i++) {
+            ganttHTML += `
+              <div class="gantt-block">
+                ${p.id}<br>
+                t=${i}
+              </div>
+            `;
+          }
+
+          logsHTML += `
+            Tiempo ${p.startTime}: ${p.id} inició<br>
+            Tiempo ${p.completionTime}: ${p.id} finalizó<br>
+          `;
+        });
+
+        avgWait = (avgWait / processes.length).toFixed(2);
+        avgTurn = (avgTurn / processes.length).toFixed(2);
+
+        return `
+          <div class="scenario-block">
+
+            <h4>${title}</h4>
+
+            <div class="gantt">
+              ${ganttHTML}
+            </div>
+
+            <table>
+              <thead>
+                <tr>
+                  <th>Proceso</th>
+                  <th>Llegada</th>
+                  <th>Inicio</th>
+                  <th>Fin</th>
+                  <th>Espera</th>
+                  <th>Turnaround</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                ${processes
+                  .map(
+                    (p) => `
+                  <tr>
+                    <td>${p.id}</td>
+                    <td>${p.arrivalTime}</td>
+                    <td>${p.startTime}</td>
+                    <td>${p.completionTime}</td>
+                    <td>${p.waitingTime}</td>
+                    <td>${p.turnaroundTime}</td>
+                  </tr>
+                `,
+                  )
+                  .join('')}
+              </tbody>
+            </table>
+
+            <div class="metrics">
+              <strong>Espera Promedio:</strong> ${avgWait}
+              <br>
+              <strong>Turnaround Promedio:</strong> ${avgTurn}
+            </div>
+
+            <div class="log">
+              ${logsHTML}
+            </div>
+
+            <div class="note-box">
+              ${note}
+            </div>
+
+          </div>
+        `;
+      }
+
+      function runMasterComparison() {
+        const container = document.getElementById('masterComparisonContent');
+
+        if (!container) return;
+
+        const quantum = parseInt(document.getElementById('quantum').value);
+
+        const scenarios = [];
+
+        scenarios.push({
+          title: '1. FCFS - No Apropiativo',
+          data: simulateInMemory('FCFS', 'NON_PREEMPTIVE', quantum),
+          note: 'FCFS ejecuta completamente cada proceso. No hay interrupciones.',
+        });
+
+        scenarios.push({
+          title: '2. FCFS - Apropiativo',
+          data: simulateInMemory('FCFS', 'PREEMPTIVE', quantum),
+          note: 'FCFS no tiene mecanismo de preempción real. El resultado es idéntico al No Apropiativo.',
+        });
+
+        scenarios.push({
+          title: '3. SJF - No Apropiativo',
+          data: simulateInMemory('SJF', 'NON_PREEMPTIVE', quantum),
+          note: 'Selecciona el proceso más corto disponible. Una vez iniciado, corre hasta el fin.',
+        });
+
+        scenarios.push({
+          title: '4. SJF - Apropiativo (SRTF)',
+          data: simulateInMemory('SJF', 'PREEMPTIVE', quantum),
+          note: 'Puede interrumpir el proceso actual si llega uno con menor tiempo restante.',
+        });
+
+        scenarios.push({
+          title: '5. Round Robin - Apropiativo',
+          data: simulateInMemory('RR', 'PREEMPTIVE', quantum),
+          note: 'Distribuye CPU usando Quantum. Si no termina, va al final de la cola.',
+        });
+
+        scenarios.push({
+          title: '6. Round Robin - No Apropiativo',
+          data: simulateInMemory('RR', 'NON_PREEMPTIVE', quantum),
+          note: 'Al forzarlo a No Apropiativo, el Quantum se ignora y el proceso corre hasta terminar.',
+        });
+
+        scenarios.push({
+          title: '7. Priority - No Apropiativo',
+          data: simulateInMemory('PRIORITY', 'NON_PREEMPTIVE', quantum),
+          note: 'La prioridad solo afecta la selección inicial. No interrumpe procesos en ejecución.',
+        });
+
+        scenarios.push({
+          title: '8. Priority - Apropiativo',
+          data: simulateInMemory('PRIORITY', 'PREEMPTIVE', quantum),
+          note: 'Puede interrumpir un proceso de baja prioridad si llega uno de alta prioridad.',
+        });
+
+        if (enableHybrid && enableHybrid.checked) {
+          const base = hybridBase.value;
+          const exec = hybridExec.value;
+          const hQuantum = parseInt(hybridQuantum.value);
+
+          const hybridData = runHybridSimulation(
+            cloneProcesses(),
+            base,
+            exec,
+            hQuantum,
+          );
+
+          scenarios.push({
+            title: '9. Híbrido (Configuración del Usuario)',
+            data: hybridData,
+            note: `Lógica Híbrida: Ordenado por <strong>${base}</strong> y ejecutado por <strong>${exec}</strong> con Quantum ${hQuantum}.`,
+          });
+        }
+
+        let html = '';
+
+        scenarios.forEach((s) => {
+          html += createScenarioHTML(s.title, s.data, s.note);
+        });
+
+        container.innerHTML = html;
+
+        generateFinalVerdict(scenarios);
+      }
+
+      function generateFinalVerdict(scenarios) {
+        const container = document.getElementById('finalVerdict');
+
+        if (!container) return;
+
+        let best = null;
+        let worst = null;
+
+        scenarios.forEach((s) => {
+          let wait = 0;
+          let turn = 0;
+
+          s.data.forEach((p) => {
+            wait += p.waitingTime;
+            turn += p.turnaroundTime;
+          });
+
+          const avgWait = wait / s.data.length;
+          const avgTurn = turn / s.data.length;
+
+          if (!best || avgWait < best.wait) {
+            best = {
+              title: s.title,
+              wait: avgWait,
+              turn: avgTurn,
+            };
+          }
+
+          if (!worst || avgWait > worst.wait) {
+            worst = {
+              title: s.title,
+              wait: avgWait,
+            };
+          }
+        });
+
+        let text = `
+          <div style="background:#f0f8ff; padding:15px; border-left:5px solid #007bff; border-radius:5px;">
+            <h3>🏆 Veredicto Final</h3>
+
+            <p>
+              El algoritmo óptimo para estos datos fue <strong>${best.title}</strong>,
+              con un tiempo de espera promedio de <strong>${best.wait.toFixed(2)}</strong>
+              y un Turnaround promedio de <strong>${best.turn.toFixed(2)}</strong>.
+            </p>
+        `;
+
+        if (best.title.includes('Híbrido')) {
+          text += `
+            <p><strong>Análisis Híbrido:</strong> La combinación fue exitosa porque logró equilibrar la equidad de la ejecución por bloques con la eficiencia del ordenamiento seleccionado.</p>
+          `;
+        } else if (best.title.includes('FCFS')) {
+          text += `
+            <p><strong>Análisis FCFS:</strong> Ganó porque los procesos ya llegaban en un orden favorable o tenían tiempos similares.</p>
+          `;
+        } else if (best.title.includes('SJF')) {
+          text += `
+            <p><strong>Análisis SJF:</strong> Fue el óptimo porque priorizó los procesos cortos.</p>
+          `;
+        } else if (best.title.includes('Priority')) {
+          text += `
+            <p><strong>Análisis Priority:</strong> Funcionó mejor porque los procesos críticos tenían ráfagas cortas.</p>
+          `;
+        } else if (best.title.includes('RR')) {
+          text += `
+            <p><strong>Análisis RR:</strong> Fue equilibrado, evitando bloqueos largos.</p>
+          `;
+        }
+
+        text += `
+            <hr style="margin:10px 0;">
+
+            <p><strong>¿Por qué fallaron los otros?</strong></p>
+
+            <ul>
+              <li>
+                <strong>${worst.title}</strong>
+                tuvo el peor rendimiento (${worst.wait.toFixed(2)} de espera).
+              </li>
+            </ul>
+
+            <p>
+              <em>
+                Recomendación:
+                Use <strong>${best.title}</strong>.
+              </em>
+            </p>
+          </div>
+        `;
+
+        container.innerHTML = text;
+      }
+
+      document.addEventListener('input', (e) => {
+        if (
+          e.target.classList.contains('table-input') ||
+          e.target.id === 'quantum' ||
+          e.target.id === 'hybridQuantum' ||
+          e.target.id === 'hybridBase' ||
+          e.target.id === 'hybridExec'
+        ) {
+          runMasterComparison();
+        }
+      });
+
+      runMasterComparison();
+    </script>
+  </body>
+</html>
