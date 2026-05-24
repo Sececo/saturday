@@ -225,6 +225,9 @@
       .badge-non {
         background: #22c55e;
       }
+      .hybrid-row {
+        border-left: 6px solid #9333ea;
+      }
     </style>
   </head>
 
@@ -236,18 +239,18 @@
         <div>
           <label>Algoritmo</label>
           <select id="algorithm">
-            <option value="FCFS">FCFS</option>
-            <option value="SJF">SJF</option>
+            <option value="FCFS">First Come First Served</option>
+            <option value="SJF">Shortest Job First</option>
             <option value="RR">Round Robin</option>
-            <option value="PRIORITY">Priority Scheduling</option>
+            <option value="PRIORITY">Priority</option>
           </select>
         </div>
 
         <div>
-          <label>Modo Priority / SJF</label>
+          <label>Modo</label>
           <select id="mode">
-            <option value="NON_PREEMPTIVE">Non-Preemptive</option>
-            <option value="PREEMPTIVE">Preemptive</option>
+            <option value="NON_PREEMPTIVE">No Apropiativo</option>
+            <option value="PREEMPTIVE">Apropiativo</option>
           </select>
         </div>
 
@@ -257,7 +260,7 @@
         </div>
 
         <div>
-          <label> Velocidad de Animación (ms) </label>
+          <label> Fast / Slow (ms) </label>
 
           <input
             type="range"
@@ -303,8 +306,9 @@
               <label> Algoritmo Base (Ordenamiento) </label>
 
               <select id="hybridBase">
-                <option value="FCFS">FCFS</option>
-                <option value="SJF">SJF</option>
+                <option value="FCFS">First Come First Served</option>
+                <option value="SJF">Shortest Job First</option>
+                <option value="RR">Round Robin</option>
                 <option value="PRIORITY">Priority</option>
               </select>
             </div>
@@ -313,9 +317,10 @@
               <label> Método de Ejecución </label>
 
               <select id="hybridExec">
+                <option value="FCFS">First Come First Served</option>
+                <option value="SJF">Shortest Job First</option>
                 <option value="RR">Round Robin</option>
-                <option value="FCFS">FCFS</option>
-                <option value="SJF">SJF</option>
+                <option value="PRIORITY">Priority</option>
               </select>
             </div>
 
@@ -1027,6 +1032,8 @@
         let time = 0;
         let completed = 0;
         let readyQueue = [];
+        const timeline = [];
+        const logs = [];
 
         while (completed < processes.length) {
           processes.forEach((p) => {
@@ -1046,6 +1053,7 @@
           const current = readyQueue.shift();
 
           if (!current) {
+            logs.push(`Tiempo ${time}: CPU IDLE`);
             time++;
             continue;
           }
@@ -1058,6 +1066,12 @@
             let slice = Math.min(quantum, current.remainingTime);
 
             for (let i = 0; i < slice; i++) {
+              timeline.push({
+                process: current.id,
+                time: time,
+              });
+
+              logs.push(`Tiempo ${time}: Ejecutando ${current.id}`);
               current.remainingTime--;
 
               time++;
@@ -1084,17 +1098,25 @@
               sortQueue(readyQueue, baseAlgo);
             } else {
               current.completionTime = time;
+              logs.push(`Tiempo ${time}: ${current.id} finalizó`);
 
               completed++;
             }
           } else {
             while (current.remainingTime > 0) {
+              timeline.push({
+                process: current.id,
+                time: time,
+              });
+
+              logs.push(`Tiempo ${time}: Ejecutando ${current.id}`);
               current.remainingTime--;
 
               time++;
             }
 
             current.completionTime = time;
+            logs.push(`Tiempo ${time}: ${current.id} finalizó`);
 
             completed++;
           }
@@ -1105,7 +1127,8 @@
 
           p.waitingTime = p.turnaroundTime - p.burstTime;
         });
-
+        processes.timeline = timeline;
+        processes.logs = logs;
         return processes;
       }
 
@@ -1306,12 +1329,15 @@
           const avgWait = totalWait / s.data.length;
           const avgTurn = totalTurn / s.data.length;
 
-          const efficiencyScore = ((1 / (avgWait + avgTurn)) * 100).toFixed(2);
+          const totalMetric = avgWait + avgTurn;
 
-          let type = 'No Apropiativo';
+          const efficiencyScore =
+            totalMetric > 0 ? ((1 / totalMetric) * 100).toFixed(2) : '0.00';
 
-          if (s.title.includes('Apropiativo') || s.title.includes('RR')) {
-            type = 'Apropiativo';
+          let type = 'Apropiativo';
+
+          if (s.title.includes('No Apropiativo')) {
+            type = 'No Apropiativo';
           }
 
           return {
@@ -1360,12 +1386,17 @@
   `;
 
         ranking.forEach((r, index) => {
-          const rowClass =
-            index === 0
-              ? 'rank-1'
-              : index === ranking.length - 1
-                ? 'rank-last'
-                : '';
+          let rowClass = '';
+
+          if (index === 0) {
+            rowClass = 'rank-1';
+          } else if (index === ranking.length - 1) {
+            rowClass = 'rank-last';
+          }
+
+          if (r.title.includes('Híbrido')) {
+            rowClass += ' hybrid-row';
+          }
 
           html += `
       <tr class="${rowClass}">
