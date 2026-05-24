@@ -228,6 +228,42 @@
       .hybrid-row {
         border-left: 6px solid #9333ea;
       }
+      .creator-footer {
+        margin-top: 40px;
+        padding-top: 20px;
+        border-top: 1px solid #ddd;
+
+        display: flex;
+        align-items: center;
+        gap: 15px;
+
+        color: #444;
+      }
+
+      .creator-avatar {
+        width: 65px;
+        height: 65px;
+        border-radius: 50%;
+        border: 3px solid #007bff;
+
+        object-fit: cover;
+
+        transition: transform 0.2s ease;
+      }
+
+      .creator-avatar:hover {
+        transform: scale(1.05);
+      }
+
+      .creator-footer a {
+        color: #007bff;
+        text-decoration: none;
+        font-weight: bold;
+      }
+
+      .creator-footer a:hover {
+        text-decoration: underline;
+      }
     </style>
   </head>
 
@@ -398,6 +434,22 @@
         <h3>Veredicto Final</h3>
 
         <div id="finalVerdict"></div>
+      </div>
+      <div class="creator-footer">
+        <img
+          src="https://github.com/Sececo.png"
+          alt="Sececo"
+          class="creator-avatar"
+        />
+
+        <div>
+          <strong>Hecho por Sececo</strong>
+          <br />
+
+          <a href="https://github.com/Sececo" target="_blank">
+            github.com/Sececo
+          </a>
+        </div>
       </div>
     </div>
 
